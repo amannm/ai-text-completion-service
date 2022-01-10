@@ -1,0 +1,84 @@
+plugins {
+    id 'java'
+}
+
+group 'systems.cauldron'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        name = 'GitHubPackages'
+        url = uri('https://maven.pkg.github.com/amannm/ai-text-completer')
+        credentials {
+            username = System.getenv('GITHUB_ACTOR')
+            password = System.getenv('GITHUB_TOKEN')
+        }
+    }
+}
+
+dependencies {
+
+    //ai text completion
+    implementation 'systems.cauldron:ai-text-completer:1.0-SNAPSHOT'
+
+    //web server
+    implementation enforcedPlatform('io.helidon:helidon-dependencies:2+')
+    implementation 'io.helidon.webserver:helidon-webserver'
+    implementation 'io.helidon.webserver:helidon-webserver-cors'
+    implementation 'io.helidon.media:helidon-media-jsonp'
+    implementation 'io.helidon.config:helidon-config-yaml'
+    implementation 'io.helidon.health:helidon-health'
+    implementation 'io.helidon.health:helidon-health-checks'
+    implementation 'io.helidon.metrics:helidon-metrics'
+    testImplementation 'io.helidon.webclient:helidon-webclient'
+
+    // unit testing
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5+'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5+'
+
+    // logging
+    implementation 'org.apache.logging.log4j:log4j-api:2+'
+    implementation 'org.apache.logging.log4j:log4j-core:2+'
+
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+compileJava {
+    inputs.property('moduleName', 'systems.cauldron.service.aitextcompletion')
+    doFirst {
+        options.compilerArgs = [
+                '--module-path', classpath.asPath,
+        ]
+        classpath = files()
+    }
+}
+
+jar {
+    archiveFileName = 'app.jar'
+    manifest.attributes.putAll([
+            'Main-Class': 'systems.cauldron.service.aitextcompletion.Server',
+            'Class-Path': configurations.runtimeClasspath.files.collect { "libs/$it.name" }.join(' ')
+    ])
+}
+
+task copyLibs(type: Copy) {
+    from configurations.runtimeClasspath
+    into 'build/libs/libs'
+    dependsOn jar
+}
+
+assemble {
+    dependsOn copyLibs
+}
