@@ -24,6 +24,7 @@ jobs:
           ./gradlew build
           ./gradlew assemble
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_TOKEN: test-openai-api-token
           API_SECRET: test-api-secret
       - id: meta
