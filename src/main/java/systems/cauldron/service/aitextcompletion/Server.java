@@ -37,13 +37,20 @@ public class Server {
 
         Config config = Config.create();
 
-        String providerApiToken = loadRequiredEnvironmentVariable("OPENAI_API_TOKEN");
+        String openAiApiToken = loadRequiredEnvironmentVariable("OPENAI_API_TOKEN");
+        String ai21ApiToken = loadRequiredEnvironmentVariable("AI21_API_TOKEN");
         String apiSecret = loadRequiredEnvironmentVariable("API_SECRET");
 
         EnumMap<CompletionProvider.Type, CompletionProvider> providers = Arrays.stream(CompletionProvider.Type.values())
                 .collect(Collectors.toMap(
                         providerType -> providerType,
-                        providerType -> CompletionProvider.create(providerApiToken, providerType),
+                        providerType -> {
+                            String apiToken = switch (providerType) {
+                                case OPENAI_DAVINCI, OPENAI_CURIE, OPENAI_BABBAGE, OPENAI_ADA -> openAiApiToken;
+                                case AI21_J1_LARGE, AI21_J1_JUMBO -> ai21ApiToken;
+                            };
+                            return CompletionProvider.create(apiToken, providerType);
+                        },
                         (a, b) -> {
                             throw new AssertionError();
                         },
