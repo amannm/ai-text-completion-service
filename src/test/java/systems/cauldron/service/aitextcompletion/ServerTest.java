@@ -4,6 +4,7 @@ import io.helidon.webclient.WebClient;
 import io.helidon.webserver.WebServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import javax.json.Json;
@@ -73,7 +74,7 @@ public class ServerTest {
                 .get(10L, TimeUnit.SECONDS);
     }
 
-    //@Disabled
+    @Disabled
     @Test
     public void testCompletion() throws Exception {
         byte[] body = buildValidRequestBody();
