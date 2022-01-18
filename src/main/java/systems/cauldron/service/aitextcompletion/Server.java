@@ -16,7 +16,10 @@ import org.apache.logging.log4j.Logger;
 import systems.cauldron.completion.CompletionProvider;
 import systems.cauldron.service.aitextcompletion.web.CompletionService;
 
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Server {
 
@@ -37,8 +40,16 @@ public class Server {
         String providerApiToken = loadRequiredEnvironmentVariable("OPENAI_API_TOKEN");
         String apiSecret = loadRequiredEnvironmentVariable("API_SECRET");
 
-        CompletionProvider provider = CompletionProvider.create(providerApiToken, CompletionProvider.Type.OPENAI_DAVINCI);
-        CompletionService completionService = new CompletionService(provider, apiSecret);
+        EnumMap<CompletionProvider.Type, CompletionProvider> providers = Arrays.stream(CompletionProvider.Type.values())
+                .collect(Collectors.toMap(
+                        providerType -> providerType,
+                        providerType -> CompletionProvider.create(providerApiToken, providerType),
+                        (a, b) -> {
+                            throw new AssertionError();
+                        },
+                        () -> new EnumMap<>(CompletionProvider.Type.class)
+                ));
+        CompletionService completionService = new CompletionService(providers, apiSecret);
 
         Map<String, Service> serviceMap = Map.of("/api/v1", completionService);
 

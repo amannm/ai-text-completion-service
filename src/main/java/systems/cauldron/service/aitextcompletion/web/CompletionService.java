@@ -15,6 +15,7 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import java.io.ByteArrayInputStream;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.SubmissionPublisher;
 
@@ -22,11 +23,11 @@ public class CompletionService implements Service {
 
     private final static Logger LOG = LogManager.getLogger(CompletionService.class);
 
-    private final CompletionProvider provider;
+    private final Map<CompletionProvider.Type, CompletionProvider> providers;
     private final String apiSecret;
 
-    public CompletionService(CompletionProvider provider, String apiSecret) {
-        this.provider = provider;
+    public CompletionService(Map<CompletionProvider.Type, CompletionProvider> providers, String apiSecret) {
+        this.providers = providers;
         this.apiSecret = apiSecret;
     }
 
@@ -50,12 +51,8 @@ public class CompletionService implements Service {
                                                 return reader.readObject();
                                             }
                                         })
-                                        .thenAccept(jsonRequest -> buildCompletionRequest(jsonRequest).ifPresentOrElse(
-                                                completionRequest -> {
-                                                    SubmissionPublisher<String> publisher = new SubmissionPublisher<>();
-                                                    provider.complete(completionRequest, publisher);
-                                                    response.send(publisher, String.class);
-                                                },
+                                        .thenAccept(jsonRequest -> handleRequest(jsonRequest).ifPresentOrElse(
+                                                publisher -> response.send(publisher, String.class),
                                                 () -> response.status(400).send()
                                         ))
                                         .exceptionallyAccept(throwable -> {
@@ -68,11 +65,14 @@ public class CompletionService implements Service {
                 );
     }
 
-    private Optional<CompletionRequest> buildCompletionRequest(JsonObject jsonRequest) {
+    private Optional<SubmissionPublisher<String>> handleRequest(JsonObject jsonRequest) {
+        CompletionProvider.Type providerType;
         String prompt;
         int maxTokens;
         double temperature;
         try {
+            String providerTypeValue = jsonRequest.getString("provider");
+            providerType = CompletionProvider.Type.valueOf(providerTypeValue);
             prompt = jsonRequest.getString("prompt");
             maxTokens = jsonRequest.getInt("maxTokens");
             temperature = jsonRequest.getJsonNumber("temperature").doubleValue();
@@ -83,6 +83,9 @@ public class CompletionService implements Service {
         TerminationConfig terminationConfig = new TerminationConfig(maxTokens, new String[]{"\n"});
         SamplingConfig samplingConfig = new SamplingConfig(temperature, 1.0);
         CompletionRequest completionRequest = new CompletionRequest(prompt, terminationConfig, samplingConfig);
-        return Optional.of(completionRequest);
+        CompletionProvider provider = providers.get(providerType);
+        SubmissionPublisher<String> publisher = new SubmissionPublisher<>();
+        provider.complete(completionRequest, publisher);
+        return Optional.of(publisher);
     }
 }

@@ -4,7 +4,6 @@ import io.helidon.webclient.WebClient;
 import io.helidon.webserver.WebServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import javax.json.Json;
@@ -74,7 +73,7 @@ public class ServerTest {
                 .get(10L, TimeUnit.SECONDS);
     }
 
-    @Disabled
+    //@Disabled
     @Test
     public void testCompletion() throws Exception {
         byte[] body = buildValidRequestBody();
@@ -149,6 +148,7 @@ public class ServerTest {
 
     private byte[] buildValidRequestBody() {
         JsonObject jsonObject = Json.createObjectBuilder()
+                .add("provider", "OPENAI_DAVINCI")
                 .add("prompt", "His first program simply printed 'Hello")
                 .add("maxTokens", 3)
                 .add("temperature", 0.1)
@@ -158,6 +158,7 @@ public class ServerTest {
 
     private byte[] buildInvalidRequestBody() {
         JsonObject jsonObject = Json.createObjectBuilder()
+                .add("provider", "OPENAI_DAVINCI")
                 .add("prompt", "His first program simply printed 'Hello")
                 .add("maxToken", 3)
                 .add("temperature", 0.1)
