@@ -5,7 +5,7 @@ import io.helidon.config.Config;
 import io.helidon.health.HealthSupport;
 import io.helidon.health.checks.HealthChecks;
 import io.helidon.media.jsonp.JsonpSupport;
-import io.helidon.metrics.MetricsSupport;
+import io.helidon.metrics.prometheus.PrometheusSupport;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.Service;
 import io.helidon.webserver.WebServer;
@@ -85,7 +85,7 @@ public class Server {
     }
 
     private static Routing getRouting(Map<String, Service> serviceMap) {
-        MetricsSupport metrics = MetricsSupport.create();
+        PrometheusSupport metrics = PrometheusSupport.create();
         HealthSupport health = HealthSupport.builder()
                 .addLiveness(HealthChecks.healthChecks())
                 .build();

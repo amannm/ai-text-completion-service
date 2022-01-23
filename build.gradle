@@ -32,6 +32,7 @@ dependencies {
     implementation 'io.helidon.health:helidon-health'
     implementation 'io.helidon.health:helidon-health-checks'
     implementation 'io.helidon.metrics:helidon-metrics'
+    implementation 'io.helidon.metrics:helidon-metrics-prometheus'
     testImplementation 'io.helidon.webclient:helidon-webclient'
 
     // unit testing
