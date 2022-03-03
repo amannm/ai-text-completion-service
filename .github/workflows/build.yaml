@@ -27,6 +27,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_TOKEN: test-openai-api-token
           AI21_API_TOKEN: test-ai21-api-token
+          GOOSEAI_API_TOKEN: test-gooseai-api-token
           API_SECRET: test-api-secret
       - id: meta
         uses: docker/metadata-action@v3
