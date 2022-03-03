@@ -6,19 +6,23 @@ import io.helidon.health.HealthSupport;
 import io.helidon.health.checks.HealthChecks;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.metrics.prometheus.PrometheusSupport;
+import io.helidon.tracing.TracerBuilder;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.Service;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.cors.CorsSupport;
 import io.helidon.webserver.cors.CrossOriginConfig;
+import io.opentracing.Tracer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import systems.cauldron.completion.CompletionProvider;
 import systems.cauldron.service.aitextcompletion.web.CompletionService;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class Server {
@@ -62,10 +66,16 @@ public class Server {
 
         Map<String, Service> serviceMap = Map.of("/api/v1", completionService);
 
-        WebServer server = WebServer.builder(getRouting(serviceMap))
+        WebServer.Builder serverBuilder = WebServer.builder(getRouting(serviceMap))
                 .config(config.get("server"))
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+                .addMediaSupport(JsonpSupport.create());
+        loadOptionalEnvironmentVariable("TRACES_RECEIVER_URL").ifPresent(url -> {
+            Tracer tracer = TracerBuilder.create("ai-text-completion-service")
+                    .collectorUri(URI.create(url))
+                    .build();
+            serverBuilder.tracer(tracer);
+        });
+        WebServer server = serverBuilder.build();
         server.start().thenAccept(s -> {
             LOG.info("server started @ http://localhost:" + s.port());
             s.whenShutdown().thenRun(() -> {
@@ -84,6 +94,10 @@ public class Server {
             throw new IllegalArgumentException("missing required environment variable: " + environmentVariable);
         }
         return apiToken;
+    }
+
+    private static Optional<String> loadOptionalEnvironmentVariable(String environmentVariable) {
+        return Optional.ofNullable(System.getenv(environmentVariable));
     }
 
     private static Routing getRouting(Map<String, Service> serviceMap) {
