@@ -57,7 +57,7 @@ public class Server {
         WebServer.Builder serverBuilder = WebServer.builder(getRouting(serviceMap))
                 .config(config.get("server"))
                 .addMediaSupport(JsonpSupport.create());
-        loadOptionalEnvironmentVariable("TRACES_RECEIVER_URL").ifPresent(url -> {
+        loadOptionalEnvironmentVariable("ZIPKIN_ENDPOINT").ifPresent(url -> {
             Tracer tracer = TracerBuilder.create("ai-text-completion-service")
                     .collectorUri(URI.create(url))
                     .enabled(true)
