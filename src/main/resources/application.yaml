@@ -17,5 +17,9 @@ tracing:
   paths:
     - path: "/health"
       enabled: false
+    - path: "/health/ready"
+      enabled: false
+    - path: "/health/live"
+      enabled: false
     - path: "/metrics"
       enabled: false
