@@ -43,6 +43,9 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core:2+'
     implementation 'org.apache.logging.log4j:log4j-jul:2+'
     implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2+'
+    implementation 'io.opentelemetry:opentelemetry-api:1+'
+    implementation 'io.opentelemetry.instrumentation:opentelemetry-log4j-context-data-2.16-autoconfigure:1+'
+
 
     // unit testing
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5+'

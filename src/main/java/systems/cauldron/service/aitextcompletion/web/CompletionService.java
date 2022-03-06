@@ -1,5 +1,6 @@
 package systems.cauldron.service.aitextcompletion.web;
 
+import io.helidon.logging.common.HelidonMdc;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -85,12 +86,18 @@ public class CompletionService implements Service {
             LOG.warn("received invalid request: {}", ex.getMessage());
             return Optional.empty();
         }
+        HelidonMdc.set("providerType", providerType.toString());
+        HelidonMdc.set("prompt", prompt);
+        HelidonMdc.set("maxTokens", String.valueOf(maxTokens));
+        HelidonMdc.set("temperature", String.valueOf(temperature));
         TerminationConfig terminationConfig = new TerminationConfig(maxTokens, new String[]{"\n"});
         SamplingConfig samplingConfig = new SamplingConfig(temperature, 1.0);
         CompletionRequest completionRequest = new CompletionRequest(prompt, terminationConfig, samplingConfig);
         CompletionProvider provider = providers.get(providerType);
         SubmissionPublisher<String> publisher = new SubmissionPublisher<>();
+        LOG.info("starting completion request");
         provider.complete(completionRequest, publisher);
+        LOG.info("completion request complete");
         return Optional.of(publisher);
     }
 }
