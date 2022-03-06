@@ -8,6 +8,8 @@ module systems.cauldron.service.aitextcompletion {
     requires io.helidon.health.checks;
     requires io.helidon.health;
     requires io.helidon.media.jsonp;
-    requires org.apache.logging.log4j;
+    requires io.helidon.logging.common;
+    requires io.helidon.logging.jul;
+    requires java.logging;
     exports systems.cauldron.service.aitextcompletion;
 }

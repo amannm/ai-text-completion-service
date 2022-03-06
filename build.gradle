@@ -33,6 +33,7 @@ dependencies {
     implementation 'io.helidon.health:helidon-health-checks'
     implementation 'io.helidon.metrics:helidon-metrics'
     implementation 'io.helidon.metrics:helidon-metrics-prometheus'
+    implementation 'io.helidon.logging:helidon-logging-jul'
     implementation 'io.helidon.tracing:helidon-tracing'
     implementation 'io.helidon.tracing:helidon-tracing-jaeger'
     testImplementation 'io.helidon.webclient:helidon-webclient'
@@ -41,10 +42,6 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5+'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5+'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5+'
-
-    // logging
-    implementation 'org.apache.logging.log4j:log4j-api:2+'
-    implementation 'org.apache.logging.log4j:log4j-core:2+'
 
 }
 

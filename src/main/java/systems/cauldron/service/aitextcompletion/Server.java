@@ -4,6 +4,7 @@ import io.helidon.common.LogConfig;
 import io.helidon.config.Config;
 import io.helidon.health.HealthSupport;
 import io.helidon.health.checks.HealthChecks;
+import io.helidon.logging.common.HelidonMdc;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.metrics.prometheus.PrometheusSupport;
 import io.helidon.tracing.TracerBuilder;
@@ -13,8 +14,6 @@ import io.helidon.webserver.WebServer;
 import io.helidon.webserver.cors.CorsSupport;
 import io.helidon.webserver.cors.CrossOriginConfig;
 import io.opentracing.Tracer;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import systems.cauldron.completion.CompletionProvider;
 import systems.cauldron.service.aitextcompletion.web.CompletionService;
 
@@ -23,11 +22,13 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class Server {
 
-    private final static Logger LOG = LogManager.getLogger(Server.class);
+    private final static Logger LOG = Logger.getLogger(Server.class.getName());
 
     private Server() {
     }
@@ -37,8 +38,8 @@ public class Server {
     }
 
     static WebServer start() {
+        HelidonMdc.clear();
         LogConfig.configureRuntime();
-
         Config config = Config.create();
 
         String openAiApiToken = loadRequiredEnvironmentVariable("OPENAI_API_TOKEN");
@@ -82,7 +83,7 @@ public class Server {
                 LOG.info("server stopped");
             });
         }).exceptionally(ex -> {
-            LOG.error("startup failed", ex);
+            LOG.log(Level.SEVERE, "startup failed", ex);
             return null;
         });
         return server;
