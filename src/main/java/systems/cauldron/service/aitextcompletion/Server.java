@@ -42,28 +42,7 @@ public class Server {
         LogConfig.configureRuntime();
         Config config = Config.create();
 
-        String openAiApiToken = loadRequiredEnvironmentVariable("OPENAI_API_TOKEN");
-        String ai21ApiToken = loadRequiredEnvironmentVariable("AI21_API_TOKEN");
-        String gooseAiApiToken = loadRequiredEnvironmentVariable("GOOSEAI_API_TOKEN");
-        String apiSecret = loadRequiredEnvironmentVariable("API_SECRET");
-
-        EnumMap<CompletionProvider.Type, CompletionProvider> providers = Arrays.stream(CompletionProvider.Type.values())
-                .collect(Collectors.toMap(
-                        providerType -> providerType,
-                        providerType -> {
-                            String apiToken = switch (providerType) {
-                                case OPENAI_DAVINCI, OPENAI_CURIE, OPENAI_BABBAGE, OPENAI_ADA -> openAiApiToken;
-                                case AI21_J1_LARGE, AI21_J1_JUMBO -> ai21ApiToken;
-                                case GOOSEAI_GPT_J_6B, GOOSEAI_GPT_NEO_20B, GOOSEAI_GPT_NEO_2_7B, GOOSEAI_GPT_NEO_1_3B, GOOSEAI_GPT_NEO_125M, GOOSEAI_FAIRSEQ_13B, GOOSEAI_FAIRSEQ_6_7B, GOOSEAI_FAIRSEQ_2_7B, GOOSEAI_FAIRSEQ_1_3B, GOOSEAI_FAIRSEQ_125M -> gooseAiApiToken;
-                            };
-                            return CompletionProvider.create(apiToken, providerType);
-                        },
-                        (a, b) -> {
-                            throw new AssertionError();
-                        },
-                        () -> new EnumMap<>(CompletionProvider.Type.class)
-                ));
-        CompletionService completionService = new CompletionService(providers, apiSecret);
+        CompletionService completionService = getCompletionService();
 
         Map<String, Service> serviceMap = Map.of("/api/v1", completionService);
 
@@ -87,6 +66,30 @@ public class Server {
             return null;
         });
         return server;
+    }
+
+    private static CompletionService getCompletionService() {
+        String openAiApiToken = loadRequiredEnvironmentVariable("OPENAI_API_TOKEN");
+        String ai21ApiToken = loadRequiredEnvironmentVariable("AI21_API_TOKEN");
+        String gooseAiApiToken = loadRequiredEnvironmentVariable("GOOSEAI_API_TOKEN");
+        String apiSecret = loadRequiredEnvironmentVariable("API_SECRET");
+        EnumMap<CompletionProvider.Type, CompletionProvider> providers = Arrays.stream(CompletionProvider.Type.values())
+                .collect(Collectors.toMap(
+                        providerType -> providerType,
+                        providerType -> {
+                            String apiToken = switch (providerType) {
+                                case OPENAI_DAVINCI, OPENAI_CURIE, OPENAI_BABBAGE, OPENAI_ADA -> openAiApiToken;
+                                case AI21_J1_LARGE, AI21_J1_JUMBO -> ai21ApiToken;
+                                case GOOSEAI_GPT_J_6B, GOOSEAI_GPT_NEO_20B, GOOSEAI_GPT_NEO_2_7B, GOOSEAI_GPT_NEO_1_3B, GOOSEAI_GPT_NEO_125M, GOOSEAI_FAIRSEQ_13B, GOOSEAI_FAIRSEQ_6_7B, GOOSEAI_FAIRSEQ_2_7B, GOOSEAI_FAIRSEQ_1_3B, GOOSEAI_FAIRSEQ_125M -> gooseAiApiToken;
+                            };
+                            return CompletionProvider.create(apiToken, providerType);
+                        },
+                        (a, b) -> {
+                            throw new AssertionError();
+                        },
+                        () -> new EnumMap<>(CompletionProvider.Type.class)
+                ));
+        return new CompletionService(providers, apiSecret);
     }
 
     private static String loadRequiredEnvironmentVariable(String environmentVariable) {
