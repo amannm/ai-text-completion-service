@@ -6,10 +6,8 @@ import io.helidon.health.HealthSupport;
 import io.helidon.health.checks.HealthChecks;
 import io.helidon.logging.common.HelidonMdc;
 import io.helidon.media.jsonp.JsonpSupport;
-import io.helidon.metrics.prometheus.PrometheusSupport;
+import io.helidon.metrics.MetricsSupport;
 import io.helidon.tracing.TracerBuilder;
-import io.helidon.tracing.config.TracingConfig;
-import io.helidon.webserver.PathTracingConfig;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
@@ -17,6 +15,7 @@ import io.helidon.webserver.cors.CorsSupport;
 import io.helidon.webserver.cors.CrossOriginConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.eclipse.microprofile.health.HealthCheck;
 import systems.cauldron.completion.CompletionProvider;
 import systems.cauldron.service.aitextcompletion.web.CompletionService;
 
@@ -45,7 +44,7 @@ public class Server {
         HelidonMdc.clear();
         LogConfig.configureRuntime();
         Config config = Config.create();
-        WebServer.Builder serverBuilder = WebServer.builder(getRouting())
+        WebServer.Builder serverBuilder = WebServer.builder(getRouting(config))
                 .config(config.get("server"))
                 .addMediaSupport(JsonpSupport.create());
         loadOptionalEnvironmentVariable("ZIPKIN_ENDPOINT").ifPresent(url -> {
@@ -80,25 +79,15 @@ public class Server {
         return Optional.ofNullable(System.getenv(environmentVariable));
     }
 
-    private static Routing getRouting() {
+    private static Routing getRouting(Config config) {
+        HealthCheck[] healthChecks = HealthChecks.healthChecks(config.get("health.checks"));
         HealthSupport health = HealthSupport.builder()
-                .webContext("/health")
-                .addReadiness(HealthChecks.healthChecks())
-                .addLiveness(HealthChecks.healthChecks())
+                .config(config.get("health"))
+                .addReadiness(healthChecks)
+                .addLiveness(healthChecks)
                 .build();
-        PrometheusSupport metrics = PrometheusSupport.builder()
-                .path("/metrics")
-                .build();
-        WebTracingConfig tracing = WebTracingConfig.builder()
-                .addPathConfig(PathTracingConfig.builder()
-                        .path("/health")
-                        .tracingConfig(TracingConfig.DISABLED)
-                        .build())
-                .addPathConfig(PathTracingConfig.builder()
-                        .path("/metrics")
-                        .tracingConfig(TracingConfig.DISABLED)
-                        .build())
-                .build();
+        MetricsSupport metrics = MetricsSupport.create(config.get("metrics"));
+        WebTracingConfig tracing = WebTracingConfig.create(config.get("tracing"));
         CorsSupport corsSupport = CorsSupport.builder()
                 .addCrossOrigin("/complete", CrossOriginConfig.builder()
                         .allowOrigins("*")

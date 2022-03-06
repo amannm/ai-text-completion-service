@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -59,7 +60,42 @@ public class ServerTest {
         webClient.get()
                 .path("/health")
                 .request()
-                .thenAccept(response -> assertEquals(200, response.status().code()))
+                .thenApply(response -> {
+                    assertEquals(200, response.status().code());
+                    return response.content().as(String.class).thenAccept(content -> {
+                        assertFalse(content.isEmpty());
+                    });
+                })
+                .toCompletableFuture()
+                .get(10L, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void testReadiness() throws Exception {
+        webClient.get()
+                .path("/health/ready")
+                .request()
+                .thenApply(response -> {
+                    assertEquals(200, response.status().code());
+                    return response.content().as(String.class).thenAccept(content -> {
+                        assertFalse(content.isEmpty());
+                    });
+                })
+                .toCompletableFuture()
+                .get(10L, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void testLiveness() throws Exception {
+        webClient.get()
+                .path("/health/live")
+                .request()
+                .thenApply(response -> {
+                    assertEquals(200, response.status().code());
+                    return response.content().as(String.class).thenAccept(content -> {
+                        assertFalse(content.isEmpty());
+                    });
+                })
                 .toCompletableFuture()
                 .get(10L, TimeUnit.SECONDS);
     }
@@ -69,7 +105,12 @@ public class ServerTest {
         webClient.get()
                 .path("/metrics")
                 .request()
-                .thenAccept(response -> assertEquals(200, response.status().code()))
+                .thenApply(response -> {
+                    assertEquals(200, response.status().code());
+                    return response.content().as(String.class).thenAccept(content -> {
+                        assertFalse(content.isEmpty());
+                    });
+                })
                 .toCompletableFuture()
                 .get(10L, TimeUnit.SECONDS);
     }

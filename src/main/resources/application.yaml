@@ -1,0 +1,21 @@
+server:
+  port: 8080
+  host: "0.0.0.0"
+health:
+  web-context: "/health"
+  enabled: true
+  checks:
+    heapMemory:
+      thresholdPercent: 98.0
+    diskSpace:
+      path: "."
+      thresholdPercent: 98.0
+metrics:
+  web-context: "/metrics"
+  enabled: true
+tracing:
+  paths:
+    - path: "/health"
+      enabled: false
+    - path: "/metrics"
+      enabled: false
