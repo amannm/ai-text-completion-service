@@ -18,6 +18,8 @@ import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.cors.CorsSupport;
 import io.helidon.webserver.cors.CrossOriginConfig;
 import io.opentracing.Tracer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import systems.cauldron.completion.CompletionProvider;
 import systems.cauldron.service.aitextcompletion.web.CompletionService;
 
@@ -26,13 +28,15 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class Server {
 
-    private final static Logger LOG = Logger.getLogger(Server.class.getName());
+    static {
+        System.setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
+    }
+
+    private final static Logger LOG = LogManager.getLogger(Server.class);
 
     private Server() {
     }
@@ -56,6 +60,8 @@ public class Server {
         loadOptionalEnvironmentVariable("TRACES_RECEIVER_URL").ifPresent(url -> {
             Tracer tracer = TracerBuilder.create("ai-text-completion-service")
                     .collectorUri(URI.create(url))
+                    .enabled(true)
+                    .registerGlobal(true)
                     .build();
             serverBuilder.tracer(tracer);
         });
@@ -66,7 +72,7 @@ public class Server {
                 LOG.info("server stopped");
             });
         }).exceptionally(ex -> {
-            LOG.log(Level.SEVERE, "startup failed", ex);
+            LOG.error("startup failed", ex);
             return null;
         });
         return server;

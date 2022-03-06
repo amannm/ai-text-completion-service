@@ -33,10 +33,16 @@ dependencies {
     implementation 'io.helidon.health:helidon-health-checks'
     implementation 'io.helidon.metrics:helidon-metrics'
     implementation 'io.helidon.metrics:helidon-metrics-prometheus'
-    implementation 'io.helidon.logging:helidon-logging-jul'
+    implementation 'io.helidon.logging:helidon-logging-log4j'
     implementation 'io.helidon.tracing:helidon-tracing'
-    implementation 'io.helidon.tracing:helidon-tracing-jaeger'
+    implementation 'io.helidon.tracing:helidon-tracing-zipkin'
     testImplementation 'io.helidon.webclient:helidon-webclient'
+
+    // logging
+    implementation 'org.apache.logging.log4j:log4j-api:2+'
+    implementation 'org.apache.logging.log4j:log4j-core:2+'
+    implementation 'org.apache.logging.log4j:log4j-jul:2+'
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2+'
 
     // unit testing
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5+'

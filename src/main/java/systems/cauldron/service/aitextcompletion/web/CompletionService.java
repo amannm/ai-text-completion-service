@@ -5,6 +5,8 @@ import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 import io.opentracing.Span;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import systems.cauldron.completion.CompletionProvider;
 import systems.cauldron.completion.config.CompletionRequest;
 import systems.cauldron.completion.config.SamplingConfig;
@@ -17,12 +19,10 @@ import java.io.ByteArrayInputStream;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.SubmissionPublisher;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class CompletionService implements Service {
 
-    private final static Logger LOG = Logger.getLogger(CompletionService.class.getName());
+    private final static Logger LOG = LogManager.getLogger(CompletionService.class);
 
     private final Map<CompletionProvider.Type, CompletionProvider> providers;
     private final String apiSecret;
@@ -60,7 +60,7 @@ public class CompletionService implements Service {
                                                 () -> response.status(400).send()
                                         ))
                                         .exceptionallyAccept(throwable -> {
-                                            LOG.log(Level.SEVERE, "exception while handling completion request", throwable);
+                                            LOG.error("exception while handling completion request", throwable);
                                             response.status(500);
                                         })
                                         .thenRun(span::finish);
@@ -82,7 +82,7 @@ public class CompletionService implements Service {
             maxTokens = jsonRequest.getInt("maxTokens");
             temperature = jsonRequest.getJsonNumber("temperature").doubleValue();
         } catch (Exception ex) {
-            LOG.warning("received invalid request: " + ex.getMessage());
+            LOG.warn("received invalid request: {}", ex.getMessage());
             return Optional.empty();
         }
         TerminationConfig terminationConfig = new TerminationConfig(maxTokens, new String[]{"\n"});
