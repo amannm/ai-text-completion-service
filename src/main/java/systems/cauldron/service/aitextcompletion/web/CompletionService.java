@@ -4,6 +4,7 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
+import io.opentracing.Span;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import systems.cauldron.completion.CompletionProvider;
@@ -37,12 +38,15 @@ public class CompletionService implements Service {
     }
 
     private void complete(ServerRequest request, ServerResponse response) {
+        var spanBuilder = request.tracer().buildSpan("complete");
+        request.spanContext().ifPresent(spanBuilder::asChildOf);
+        Span span = spanBuilder.start();
         request.headers()
                 .first("Authorization")
                 .ifPresentOrElse(
                         authorizationValue -> {
                             if (!apiSecret.equals(authorizationValue)) {
-                                response.status(401).send();
+                                response.status(401).send().thenRun(span::finish);
                             } else {
                                 request.content()
                                         .as(byte[].class)
@@ -58,10 +62,11 @@ public class CompletionService implements Service {
                                         .exceptionallyAccept(throwable -> {
                                             LOG.error("exception while handling completion request", throwable);
                                             response.status(500);
-                                        });
+                                        })
+                                        .thenRun(span::finish);
                             }
                         },
-                        () -> response.status(401).send()
+                        () -> response.status(401).send().thenRun(span::finish)
                 );
     }
 
