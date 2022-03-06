@@ -8,9 +8,13 @@ import io.helidon.logging.common.HelidonMdc;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.metrics.prometheus.PrometheusSupport;
 import io.helidon.tracing.TracerBuilder;
+import io.helidon.tracing.config.ComponentTracingConfig;
+import io.helidon.tracing.config.SpanTracingConfig;
+import io.helidon.tracing.config.TracingConfig;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.Service;
 import io.helidon.webserver.WebServer;
+import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.cors.CorsSupport;
 import io.helidon.webserver.cors.CrossOriginConfig;
 import io.opentracing.Tracer;
@@ -109,9 +113,17 @@ public class Server {
         HealthSupport health = HealthSupport.builder()
                 .addLiveness(HealthChecks.healthChecks())
                 .build();
+        WebTracingConfig tracing = WebTracingConfig.create(TracingConfig.builder()
+                .addComponent(ComponentTracingConfig.builder("web-server")
+                        .addSpan(SpanTracingConfig.builder("HTTP Request").build())
+                        .addSpan(SpanTracingConfig.builder("content-read").build())
+                        .addSpan(SpanTracingConfig.builder("content-write").build())
+                        .build())
+                .build());
         Routing.Builder routing = Routing.builder()
                 .register(health)
-                .register(metrics);
+                .register(metrics)
+                .register(tracing);
         CorsSupport corsSupport = CorsSupport.builder()
                 .addCrossOrigin("/complete", CrossOriginConfig.builder()
                         .allowOrigins("*")
