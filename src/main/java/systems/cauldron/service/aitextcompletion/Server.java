@@ -8,16 +8,13 @@ import io.helidon.logging.common.HelidonMdc;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.metrics.prometheus.PrometheusSupport;
 import io.helidon.tracing.TracerBuilder;
-import io.helidon.tracing.config.ComponentTracingConfig;
-import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfig;
+import io.helidon.webserver.PathTracingConfig;
 import io.helidon.webserver.Routing;
-import io.helidon.webserver.Service;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.cors.CorsSupport;
 import io.helidon.webserver.cors.CrossOriginConfig;
-import io.opentracing.Tracer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import systems.cauldron.completion.CompletionProvider;
@@ -26,7 +23,6 @@ import systems.cauldron.service.aitextcompletion.web.CompletionService;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -49,33 +45,75 @@ public class Server {
         HelidonMdc.clear();
         LogConfig.configureRuntime();
         Config config = Config.create();
-
-        CompletionService completionService = getCompletionService();
-
-        Map<String, Service> serviceMap = Map.of("/api/v1", completionService);
-
-        WebServer.Builder serverBuilder = WebServer.builder(getRouting(serviceMap))
+        WebServer.Builder serverBuilder = WebServer.builder(getRouting())
                 .config(config.get("server"))
                 .addMediaSupport(JsonpSupport.create());
         loadOptionalEnvironmentVariable("ZIPKIN_ENDPOINT").ifPresent(url -> {
-            Tracer tracer = TracerBuilder.create("ai-text-completion-service")
+            serverBuilder.tracer(TracerBuilder.create("ai-text-completion-service")
                     .collectorUri(URI.create(url))
                     .enabled(true)
                     .registerGlobal(true)
-                    .build();
-            serverBuilder.tracer(tracer);
+                    .build());
         });
         WebServer server = serverBuilder.build();
         server.start().thenAccept(s -> {
-            LOG.info("server started @ http://localhost:" + s.port());
+            LOG.info("server started on port {}", s.port());
             s.whenShutdown().thenRun(() -> {
                 LOG.info("server stopped");
             });
         }).exceptionally(ex -> {
-            LOG.error("startup failed", ex);
+            LOG.error("server startup failed", ex);
             return null;
         });
         return server;
+    }
+
+    private static String loadRequiredEnvironmentVariable(String environmentVariable) {
+        String apiToken = System.getenv(environmentVariable);
+        if (apiToken == null) {
+            throw new IllegalArgumentException("missing required environment variable: " + environmentVariable);
+        }
+        return apiToken;
+    }
+
+    private static Optional<String> loadOptionalEnvironmentVariable(String environmentVariable) {
+        return Optional.ofNullable(System.getenv(environmentVariable));
+    }
+
+    private static Routing getRouting() {
+        HealthSupport health = HealthSupport.builder()
+                .webContext("/health")
+                .addReadiness(HealthChecks.healthChecks())
+                .addLiveness(HealthChecks.healthChecks())
+                .build();
+        PrometheusSupport metrics = PrometheusSupport.builder()
+                .path("/metrics")
+                .build();
+        WebTracingConfig tracing = WebTracingConfig.builder()
+                .addPathConfig(PathTracingConfig.builder()
+                        .path("/health")
+                        .tracingConfig(TracingConfig.DISABLED)
+                        .build())
+                .addPathConfig(PathTracingConfig.builder()
+                        .path("/metrics")
+                        .tracingConfig(TracingConfig.DISABLED)
+                        .build())
+                .build();
+        CorsSupport corsSupport = CorsSupport.builder()
+                .addCrossOrigin("/complete", CrossOriginConfig.builder()
+                        .allowOrigins("*")
+                        .allowMethods("*")
+                        .allowHeaders("*")
+                        .allowCredentials(true)
+                        .enabled(true)
+                        .build())
+                .build();
+        Routing.Builder routing = Routing.builder()
+                .register(health)
+                .register(metrics)
+                .register(tracing)
+                .register("/api/v1", corsSupport, getCompletionService());
+        return routing.build();
     }
 
     private static CompletionService getCompletionService() {
@@ -100,46 +138,5 @@ public class Server {
                         () -> new EnumMap<>(CompletionProvider.Type.class)
                 ));
         return new CompletionService(providers, apiSecret);
-    }
-
-    private static String loadRequiredEnvironmentVariable(String environmentVariable) {
-        String apiToken = System.getenv(environmentVariable);
-        if (apiToken == null) {
-            throw new IllegalArgumentException("missing required environment variable: " + environmentVariable);
-        }
-        return apiToken;
-    }
-
-    private static Optional<String> loadOptionalEnvironmentVariable(String environmentVariable) {
-        return Optional.ofNullable(System.getenv(environmentVariable));
-    }
-
-    private static Routing getRouting(Map<String, Service> serviceMap) {
-        PrometheusSupport metrics = PrometheusSupport.create();
-        HealthSupport health = HealthSupport.builder()
-                .addLiveness(HealthChecks.healthChecks())
-                .build();
-        WebTracingConfig tracing = WebTracingConfig.create(TracingConfig.builder()
-                .addComponent(ComponentTracingConfig.builder("web-server")
-                        .addSpan(SpanTracingConfig.builder("HTTP Request").build())
-                        .addSpan(SpanTracingConfig.builder("content-read").build())
-                        .addSpan(SpanTracingConfig.builder("content-write").build())
-                        .build())
-                .build());
-        Routing.Builder routing = Routing.builder()
-                .register(health)
-                .register(metrics)
-                .register(tracing);
-        CorsSupport corsSupport = CorsSupport.builder()
-                .addCrossOrigin("/complete", CrossOriginConfig.builder()
-                        .allowOrigins("*")
-                        .allowMethods("*")
-                        .allowHeaders("*")
-                        .allowCredentials(true)
-                        .enabled(true)
-                        .build())
-                .build();
-        serviceMap.forEach((path, service) -> routing.register(path, corsSupport, service));
-        return routing.build();
     }
 }
