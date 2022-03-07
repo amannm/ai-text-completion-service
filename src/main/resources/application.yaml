@@ -14,6 +14,15 @@ metrics:
   web-context: "/metrics"
   enabled: true
 tracing:
+  components:
+    web-server:
+      spans:
+        - name: "HTTP Request"
+          enabled: true
+        - name: "content-read"
+          enabled: false
+        - name: "content-write"
+          enabled: false
   paths:
     - path: "/health"
       enabled: false
