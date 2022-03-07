@@ -129,7 +129,7 @@ public class ServerTest {
                     return response.content().as(byte[].class);
                 })
                 .toCompletableFuture()
-                .get(10L, TimeUnit.SECONDS);
+                .get(1500L, TimeUnit.SECONDS);
         assertNotNull(responseBody);
         String completion = new String(responseBody, StandardCharsets.UTF_8);
         System.out.println(completion);

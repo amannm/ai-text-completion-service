@@ -9,5 +9,6 @@ module systems.cauldron.service.aitextcompletion {
     requires io.helidon.media.jsonp;
     requires io.helidon.logging.common;
     requires org.apache.logging.log4j;
+    requires org.apache.logging.log4j.core;
     exports systems.cauldron.service.aitextcompletion;
 }

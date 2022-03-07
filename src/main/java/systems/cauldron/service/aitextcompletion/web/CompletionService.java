@@ -6,6 +6,7 @@ import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 import io.opentracing.Span;
+import io.opentracing.Tracer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import systems.cauldron.completion.CompletionProvider;
@@ -39,15 +40,14 @@ public class CompletionService implements Service {
     }
 
     private void complete(ServerRequest request, ServerResponse response) {
-        var spanBuilder = request.tracer().buildSpan("complete");
-        request.spanContext().ifPresent(spanBuilder::asChildOf);
-        Span span = spanBuilder.start();
+        Span span = startSpan(request, "complete");
         request.headers()
                 .first("Authorization")
                 .ifPresentOrElse(
                         authorizationValue -> {
                             if (!apiSecret.equals(authorizationValue)) {
-                                response.status(401).send().thenRun(span::finish);
+                                response.status(401).send()
+                                        .thenRun(() -> endSpan(span));
                             } else {
                                 request.content()
                                         .as(byte[].class)
@@ -56,18 +56,26 @@ public class CompletionService implements Service {
                                                 return reader.readObject();
                                             }
                                         })
-                                        .thenAccept(jsonRequest -> handleRequest(jsonRequest).ifPresentOrElse(
-                                                publisher -> response.send(publisher, String.class),
-                                                () -> response.status(400).send()
-                                        ))
+                                        .thenAccept(jsonRequest -> {
+                                            var result = handleRequest(jsonRequest);
+                                            result.ifPresentOrElse(
+                                                    publisher -> {
+                                                        response.send(publisher, String.class);
+                                                    },
+                                                    () -> {
+                                                        response.status(400).send();
+                                                    }
+                                            );
+                                        })
                                         .exceptionallyAccept(throwable -> {
                                             LOG.error("exception while handling completion request", throwable);
                                             response.status(500);
                                         })
-                                        .thenRun(span::finish);
+                                        .thenRun(() -> endSpan(span));
                             }
                         },
-                        () -> response.status(401).send().thenRun(span::finish)
+                        () -> response.status(401).send()
+                                .thenRun(() -> endSpan(span))
                 );
     }
 
@@ -86,10 +94,6 @@ public class CompletionService implements Service {
             LOG.warn("received invalid request: {}", ex.getMessage());
             return Optional.empty();
         }
-        HelidonMdc.set("providerType", providerType.toString());
-        HelidonMdc.set("prompt", prompt);
-        HelidonMdc.set("maxTokens", String.valueOf(maxTokens));
-        HelidonMdc.set("temperature", String.valueOf(temperature));
         TerminationConfig terminationConfig = new TerminationConfig(maxTokens, new String[]{"\n"});
         SamplingConfig samplingConfig = new SamplingConfig(temperature, 1.0);
         CompletionRequest completionRequest = new CompletionRequest(prompt, terminationConfig, samplingConfig);
@@ -99,5 +103,20 @@ public class CompletionService implements Service {
         provider.complete(completionRequest, publisher);
         LOG.info("completion request complete");
         return Optional.of(publisher);
+    }
+
+    private static Span startSpan(ServerRequest request, String name) {
+        Tracer.SpanBuilder spanBuilder = request.tracer().buildSpan(name);
+        request.spanContext().ifPresent(spanBuilder::asChildOf);
+        Span span = spanBuilder.start();
+        HelidonMdc.set("traceId", span.context().toTraceId());
+        HelidonMdc.set("spanId", span.context().toSpanId());
+        return span;
+    }
+
+    private static void endSpan(Span span) {
+        span.finish();
+        HelidonMdc.remove("traceId");
+        HelidonMdc.remove("spanId");
     }
 }

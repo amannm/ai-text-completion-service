@@ -13,6 +13,7 @@ import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebTracingConfig;
 import io.helidon.webserver.cors.CorsSupport;
 import io.helidon.webserver.cors.CrossOriginConfig;
+import io.opentracing.Tracer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.eclipse.microprofile.health.HealthCheck;
@@ -47,12 +48,13 @@ public class Server {
         WebServer.Builder serverBuilder = WebServer.builder(getRouting(config))
                 .config(config.get("server"))
                 .addMediaSupport(JsonpSupport.create());
-        loadOptionalEnvironmentVariable("ZIPKIN_ENDPOINT").ifPresent(url -> {
-            serverBuilder.tracer(TracerBuilder.create("ai-text-completion-service")
-                    .collectorUri(URI.create(url))
-                    .enabled(true)
+        loadOptionalEnvironmentVariable("ZIPKIN_ENDPOINT").ifPresent(endpoint -> {
+            Tracer tracer = TracerBuilder.create("ai-text-completion-service")
+                    .config(config.get("tracing"))
+                    .collectorUri(URI.create(endpoint))
                     .registerGlobal(true)
-                    .build());
+                    .build();
+            serverBuilder.tracer(tracer);
         });
         WebServer server = serverBuilder.build();
         server.start().thenAccept(s -> {
